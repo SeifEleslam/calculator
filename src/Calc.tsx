@@ -21,9 +21,9 @@ export default function Calc() {
   });
 
   const [total, setTotal] = useState({
-    showed:[""],
-    hidden:[""]
-  })
+    showed: [""],
+    hidden: [""],
+  });
   const IDs = [
     "C",
     "()",
@@ -76,19 +76,18 @@ export default function Calc() {
 
   const addDigit = (val: string) => {
     let { digits, curr } = state;
-    let str:string;
-    digits[curr] !== undefined && digits[curr] !== "" ? (str = digits[curr].slice(-1)) : (str = "");
+    let str: string;
+    digits[curr] !== undefined && digits[curr] !== ""
+      ? (str = digits[curr].slice(-1))
+      : (str = "");
 
-
-    if(digits.length === 0 || digits[curr] === undefined){
-      digits.push(val)
-    }
-    else if (str.includes("%"||")")){
-      addOp("×", val)
-      return
-    }
-    else{
-      digits[curr] = digits[curr] + val
+    if (digits.length === 0 || digits[curr] === undefined) {
+      digits.push(val);
+    } else if (str.includes("%") || str.includes(")")) {
+      addOp("×", val);
+      return;
+    } else {
+      digits[curr] = digits[curr] + val;
     }
 
     setState((prev) => ({
@@ -106,7 +105,7 @@ export default function Calc() {
       curr++;
       if (val2) {
         digits[curr] = val2;
-        if(val2 === "(") count++
+        if (val2 === "(") count++;
       }
     }
     setState((prev) => ({
@@ -156,14 +155,22 @@ export default function Calc() {
       } else if (count > 0 && str !== "(") {
         digits[curr] += ")";
         count--;
-      } else if (digits[curr].includes("%" || ")") || !isNaN(Number(str))) {
+      } else if (
+        str.includes("%") ||
+        str.includes(")") ||
+        !isNaN(Number(str))
+      ) {
         addOp("×", "(");
         return;
+      } else {
+        digits[curr] += "(";
+        count++;
       }
     } else if (val === "%") {
       digits[curr] === "" || digits[curr] === undefined
         ? invaildFormat()
-        : digits[curr].indexOf("%") === -1 && !isNaN(Number(digits[curr][digits[curr].length-1]))
+        : digits[curr].indexOf("%") === -1 &&
+          !isNaN(Number(digits[curr][digits[curr].length - 1]))
         ? (digits[curr] += "%")
         : console.log("%ed");
     }
@@ -201,7 +208,7 @@ export default function Calc() {
   }
 
   function doMath(digits: string[], ops: string[]) {
-    let total = []
+    let total = [];
     for (let i = 0; i < digits.length; i++) {
       total.push(digits[i]);
       if (ops[i] !== undefined) {
@@ -228,25 +235,28 @@ export default function Calc() {
       : (document.getElementById("result")!.innerHTML = "0");
   }
 
-  useEffect(()=>{
-    let total:string[] = [];
+  useEffect(() => {
+    let total: string[] = [];
     for (let i = 0; i < state.digits.length; i++) {
       total.push(state.digits[i]);
       if (state.ops[i] !== undefined) {
         total.push(state.ops[i]);
       }
     }
-    if (state.digits[state.curr] !== undefined) console.log(state.digits[state.curr].includes(")"||"%"))
-    console.log(state)
-    setTotal((prev)=>({
+    if (state.digits[state.curr] !== undefined)
+      console.log(state.digits[state.curr].includes(")" || "%"));
+    console.log(state);
+    setTotal((prev) => ({
       ...prev,
-      showed:total,
-    }))
-  },[state])
+      showed: total,
+    }));
+  }, [state]);
 
-  useEffect(()=>{
-    document.getElementById("input")!.innerHTML = total.showed.join("")
-  },[total.showed])
+  useEffect(() => {
+    if (total.showed.join("") === "")
+      document.getElementById("input")!.innerHTML = "0";
+    else document.getElementById("input")!.innerHTML = total.showed.join("");
+  }, [total.showed]);
 
   return (
     <div>
@@ -299,9 +309,7 @@ const Screen = () => {
   return (
     <div className="align-center w-full bg-sky-600 p-10 rounded-tl rounded-tr">
       <Notify />
-      <p id="input" className="p-3">
-        1/0
-      </p>
+      <p id="input" className="p-3">0</p>
       <h2 id="result" className="text-2xl p-3">
         {" "}
         infinity
