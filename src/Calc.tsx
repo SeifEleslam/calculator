@@ -1,16 +1,29 @@
-import React, { useState } from "react";
+/* eslint-disable no-new-func */
+import React, { useState, useEffect } from "react";
 
 export default function Calc() {
-  const [state, setState] = useState({
-    menu: false,
-    show: true,
+  const [state, setState] = useState<{
+    digits: string[];
+    ops: string[];
+    results: number | undefined;
+    curr: number;
+    count: number;
+  }>({
     digits: [""],
     ops: [""],
-    spcials: [""],
+    results: 0,
     curr: 0,
     count: 0,
   });
+  const [view, setView] = useState({
+    menu: false,
+    show: true,
+  });
 
+  const [total, setTotal] = useState({
+    showed:[""],
+    hidden:[""]
+  })
   const IDs = [
     "C",
     "()",
@@ -40,6 +53,7 @@ export default function Calc() {
     else if (val === "+/-") changeSign();
     else if (val === ".") addDot();
     else if (val === "()") addSpcial("()");
+    else if (val === "%") addSpcial("%");
     else addOp(val);
     /*else if (val === "()")            addSpcial("()")
         else if (val === "%")               addSpcial("%")
@@ -51,39 +65,56 @@ export default function Calc() {
   };
 
   const clear = () => {
-    console.log("Cleared");
+    setState({
+      digits: [""],
+      ops: [""],
+      results: 0,
+      curr: 0,
+      count: 0,
+    });
   };
 
   const addDigit = (val: string) => {
     let { digits, curr } = state;
+    let str:string;
+    digits[curr] !== undefined && digits[curr] !== "" ? (str = digits[curr].slice(-1)) : (str = "");
 
-    digits.length === 0 || digits[curr] === undefined
-      ? digits.push(val)
-      : (digits[curr] = digits[curr] + val);
+
+    if(digits.length === 0 || digits[curr] === undefined){
+      digits.push(val)
+    }
+    else if (str.includes("%"||")")){
+      addOp("×", val)
+      return
+    }
+    else{
+      digits[curr] = digits[curr] + val
+    }
 
     setState((prev) => ({
       ...prev,
       digits: digits,
     }));
-
-    console.log(digits);
   };
 
   const addOp = (val: string, val2?: string) => {
-    let { digits, ops, curr } = state;
+    let { digits, ops, curr, count } = state;
     if (digits[curr] === "" || digits[curr] === undefined) {
       ops[curr - 1] = val;
     } else {
       ops[curr] = val;
       curr++;
-      if (val2) digits[curr] = val2;
+      if (val2) {
+        digits[curr] = val2;
+        if(val2 === "(") count++
+      }
     }
     setState((prev) => ({
       ...prev,
       ops,
       curr,
+      count,
     }));
-    console.log(ops, digits);
   };
 
   const changeSign = () => {
@@ -99,7 +130,6 @@ export default function Calc() {
       ...prev,
       digits: digits,
     }));
-    console.log(digits);
   };
 
   const addDot = () => {
@@ -126,19 +156,97 @@ export default function Calc() {
       } else if (count > 0 && str !== "(") {
         digits[curr] += ")";
         count--;
-      } else if (digits[curr].match("%" || ")") || !isNaN(Number(str))) {
+      } else if (digits[curr].includes("%" || ")") || !isNaN(Number(str))) {
         addOp("×", "(");
         return;
       }
     } else if (val === "%") {
+      digits[curr] === "" || digits[curr] === undefined
+        ? invaildFormat()
+        : digits[curr].indexOf("%") === -1 && !isNaN(Number(digits[curr][digits[curr].length-1]))
+        ? (digits[curr] += "%")
+        : console.log("%ed");
     }
+
+    function invaildFormat() {}
+
     setState((prev) => ({
       ...prev,
       digits: digits,
       count: count,
     }));
-    console.log(digits);
   };
+
+  function maintainPercent() {
+    let { digits, ops } = state;
+    digits.forEach((digit, i) => {
+      if (digit.indexOf("%") !== -1) {
+        if (
+          ops[i - 1].match("+" || "-" || undefined) &&
+          ops[i].match("+" || "-" || undefined)
+        ) {
+          digit =
+            digit.slice(0, digit.indexOf("%")) +
+            "/100*" +
+            doMath(
+              digits.splice(i, digits.length - i + 1),
+              ops.splice(i - 1, ops.length - i + 2)
+            );
+        }
+      } else {
+        digit = digit.slice(0, digit.indexOf("%")) + "/100";
+      }
+    });
+    return digits;
+  }
+
+  function doMath(digits: string[], ops: string[]) {
+    let total = []
+    for (let i = 0; i < digits.length; i++) {
+      total.push(digits[i]);
+      if (ops[i] !== undefined) {
+        ops[i] !== "×" ? total.push(ops[i]) : total.push("*");
+      }
+    }
+    try {
+      return Number(Function(`return ${total.join()}`));
+    } catch (error) {
+      console.log(error);
+      return undefined;
+    }
+  }
+
+  function equal() {
+    const maintained = maintainPercent();
+    const results = doMath(maintained, state.ops);
+    setState((prev) => ({
+      ...prev,
+      results: results,
+    }));
+    results !== undefined
+      ? (document.getElementById("result")!.innerHTML = results.toString())
+      : (document.getElementById("result")!.innerHTML = "0");
+  }
+
+  useEffect(()=>{
+    let total:string[] = [];
+    for (let i = 0; i < state.digits.length; i++) {
+      total.push(state.digits[i]);
+      if (state.ops[i] !== undefined) {
+        total.push(state.ops[i]);
+      }
+    }
+    if (state.digits[state.curr] !== undefined) console.log(state.digits[state.curr].includes(")"||"%"))
+    console.log(state)
+    setTotal((prev)=>({
+      ...prev,
+      showed:total,
+    }))
+  },[state])
+
+  useEffect(()=>{
+    document.getElementById("input")!.innerHTML = total.showed.join("")
+  },[total.showed])
 
   return (
     <div>
@@ -147,47 +255,50 @@ export default function Calc() {
         className="fixed z-50 mt-2 left-3 top-3 duration-200 p-3 rounded-full bg-sky-600"
         onClick={() => {
           const calc = document.getElementById("calc");
-          const btn = document.getElementById("toggleCalc")
+          const btn = document.getElementById("toggleCalc");
 
-          if (calc && state.show === true) {
-            calc.classList.replace("left-2", "-left-[600px]")
-            if(btn) btn.classList.add("rotate-180")
-            setState((prev)=>({
+          if (calc && view.show === true) {
+            calc.classList.replace("left-2", "-left-[600px]");
+            if (btn) btn.classList.add("rotate-180");
+            setView((prev) => ({
               ...prev,
-              show:false
-            }))
-          }
-          else if (calc && state.show === false){
-            calc.classList.replace("-left-[600px]", "left-2")
-            if(btn) btn.classList.remove("rotate-180")
-            setState((prev)=>({
+              show: false,
+            }));
+          } else if (calc && view.show === false) {
+            calc.classList.replace("-left-[600px]", "left-2");
+            if (btn) btn.classList.remove("rotate-180");
+            setView((prev) => ({
               ...prev,
-              show:true
-            }))
+              show: true,
+            }));
           }
-
         }}
       >
-        <svg fill="#fff" width="30" height="30" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+        <svg
+          fill="#fff"
+          width="30"
+          height="30"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 512 512"
+        >
           <path d="M512 256C512 114.6 397.4 0 256 0S0 114.6 0 256S114.6 512 256 512s256-114.6 256-256zM103 239L215 127l17-17L265.9 144l-17 17-71 71L392 232l24 0 0 48-24 0-214.1 0 71 71 17 17L232 401.9l-17-17L103 273l-17-17 17-17z" />
         </svg>
       </button>
       <div
-      id="calc"
-      className="duration-200 w-96 left-2 mt-2 shadow-2xl fixed w-4/5 max-w-lg z-40"
-    >
-      <Screen />
-      <Buttons ids={IDs} click={maintainClick} />
-    </div>
+        id="calc"
+        className="duration-200 w-96 left-2 mt-2 shadow-2xl fixed w-4/5 max-w-lg z-40"
+      >
+        <Screen />
+        <Buttons ids={IDs} click={maintainClick} />
+      </div>
     </div>
   );
 }
 
 const Screen = () => {
-  
-
   return (
     <div className="align-center w-full bg-sky-600 p-10 rounded-tl rounded-tr">
+      <Notify />
       <p id="input" className="p-3">
         1/0
       </p>
@@ -199,6 +310,14 @@ const Screen = () => {
   );
 };
 
+const Notify = () => {
+  return (
+    <p
+      id="notify"
+      className="p-2 shadow-xl font-bold duration-200 rounded-bl-sm rounded-br-sm bg-white text-sky-600 absolute top-0 left-20"
+    ></p>
+  );
+};
 interface Props {
   ids: string[];
   click: (id: string) => void;
