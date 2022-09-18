@@ -8,12 +8,16 @@ export default function Calc() {
     results: number | undefined;
     curr: number;
     count: number;
+    levelIndex: number[];
+    percentLevel: number[]
   }>({
     digits: [""],
     ops: [""],
     results: 0,
     curr: 0,
     count: 0,
+    levelIndex:[0],
+    percentLevel: [],
   });
   const [view, setView] = useState({
     menu: false,
@@ -73,6 +77,8 @@ export default function Calc() {
       results: 0,
       curr: 0,
       count: 0,
+      levelIndex: [0],
+      percentLevel:[]
     });
   };
 
@@ -99,7 +105,7 @@ export default function Calc() {
   };
 
   const addOp = (val: string, val2?: string) => {
-    let { digits, ops, curr, count } = state;
+    let { digits, ops, curr, count, levelIndex } = state;
     if (digits[curr] === "" || digits[curr] === undefined) {
       ops[curr - 1] = val;
     } else {
@@ -107,7 +113,10 @@ export default function Calc() {
       curr++;
       if (val2) {
         digits[curr] = val2;
-        if (val2 === "(") count++;
+        if (val2 === "(") {
+          count++;
+          levelIndex.push(curr);
+        }
       }
     }
     setState((prev) => ({
@@ -115,6 +124,7 @@ export default function Calc() {
       ops,
       curr,
       count,
+      levelIndex,
     }));
   };
 
@@ -150,15 +160,17 @@ export default function Calc() {
   };
 
   const addSpcial: Function = (val: string) => {
-    let { digits, curr, count } = state;
+    let { digits, curr, count, levelIndex, percentLevel} = state;
     let str: string;
     digits[curr] !== undefined ? (str = digits[curr].slice(-1)) : (str = "");
     if (val === "()") {
       if (digits[curr] === "" || digits[curr] === undefined) {
         digits[curr] = "(";
+        levelIndex.push(curr);
         count++;
       } else if (count > 0 && str !== "(") {
         digits[curr] += ")";
+        levelIndex.pop();
         count--;
       } else if (
         str.includes("%") ||
@@ -169,21 +181,22 @@ export default function Calc() {
         return;
       } else {
         digits[curr] += "(";
+        levelIndex.push(curr);
         count++;
       }
     } else if (val === "%") {
-      digits[curr] === "" || digits[curr] === undefined
-        ? invaildFormat()
-        : digits[curr].indexOf("%") === -1 &&
-          !isNaN(Number(digits[curr][digits[curr].length - 1]))
-        ? (digits[curr] += "%")
-        : console.log("%ed");
+      if(digits[curr] === "" || digits[curr] === undefined) invaildFormat()
+      else if (digits[curr].indexOf("%") === -1 && !isNaN(Number(digits[curr][digits[curr].length - 1]))){
+        digits[curr] += "%"
+        percentLevel.push(levelIndex[levelIndex.length-1])
+      }
     }
 
     setState((prev) => ({
       ...prev,
-      digits: digits,
-      count: count,
+      digits,
+      count,
+      levelIndex,
     }));
   };
 
@@ -207,37 +220,46 @@ export default function Calc() {
   }
 
   function maintainPercent() {
-    let { digits, ops } = state;
-    console.log(ops[0] === ("-" || "+"));
+    let { digits, ops, percentLevel } = state;
+    let l = 0;
     const maintained = digits.map((digit, i) => {
       if (digit.indexOf("%") !== -1) {
         if (
-          ops[i - 1] === ("+" || "-") &&
-          ops[i] === ("+" || "-" || undefined)
+          ["+", "-"].indexOf(ops[i - 1]) + 1 &&
+          ["+", "-", undefined].indexOf(ops[1]) + 1
         ) {
+          l++
           return (
-            digit.slice(0, digit.indexOf("%")) +
+            digit.replace("%","") +
             "/100*" +
             doMath(
-              digits.splice(i, digits.length - i + 1),
-              ops.splice(i - 1, ops.length - i + 2)
+              digits.slice(percentLevel[l-1], i),
+              ops.slice(percentLevel[l-1], i - 1),
+              getCount(digits.slice(percentLevel[l-1], i))
             )
           );
-        }
-        else {
+        } else {
+          l++
           return digit.slice(0, -1) + "/100";
         }
+      } else {
+        return digit;
       }
-      else{
-        return digit
-      } 
     });
     console.log(maintained);
     return maintained;
   }
 
-  function doMath(digits: string[], ops: string[]) {
-    let { count } = state;
+  function getCount(arr:string[]) { 
+    let count = 0;
+    for(let i = 0; i < arr.length; i++){
+      if(arr[i].indexOf("(") !== -1) count++;
+      if(arr[i].indexOf(")") !== -1) count--;
+    }
+    return count
+  }
+
+  function doMath(digits: string[], ops: string[], count = state.count) {
     let total = [];
     for (let i = 0; i < digits.length; i++) {
       total.push(digits[i]);
@@ -249,10 +271,12 @@ export default function Calc() {
           : total.push("*");
       }
     }
+    console.log(count)
     while (count > 0) {
       total[total.length - 1] += ")";
       count--;
     }
+    console.log(total)
     try {
       return Number(Function(`return ${total.join("")}`)());
     } catch (error) {
@@ -264,13 +288,15 @@ export default function Calc() {
     return parseFloat(number.toPrecision(12));
   }
   function equal() {
+    let { results } = state;
     const maintained = maintainPercent();
-    const results = doMath(maintained, state.ops);
-    if (results !== undefined)
+    results = doMath(maintained, state.ops);
+    if (results !== undefined) {
       setState((prev) => ({
         ...prev,
-        results: strip(results),
+        results: strip(results!),
       }));
+    }
     results !== undefined
       ? (document.getElementById("result")!.innerHTML =
           strip(results).toString())
@@ -278,6 +304,7 @@ export default function Calc() {
   }
 
   useEffect(() => {
+    console.log(state.digits);
     let total: string[] = [];
     for (let i = 0; i < state.digits.length; i++) {
       total.push(state.digits[i]);
