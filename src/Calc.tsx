@@ -18,6 +18,7 @@ export default function Calc() {
   const [view, setView] = useState({
     menu: false,
     show: true,
+    note: false,
   });
 
   const [total, setTotal] = useState({
@@ -49,6 +50,7 @@ export default function Calc() {
 
   const maintainClick = (val: string) => {
     if (val === "C") clear();
+    else if (val === "=") equal();
     else if (!isNaN(Number(val))) addDigit(val);
     else if (val === "+/-") changeSign();
     else if (val === ".") addDot();
@@ -117,17 +119,20 @@ export default function Calc() {
   };
 
   const changeSign = () => {
-    let { digits, curr } = state;
+    let { digits, curr, count } = state;
     if (digits.length === 0 || digits[curr] === undefined) {
       digits[curr] = "(-";
     } else if (digits[curr].indexOf("(-") === -1) {
       digits[curr] = "(-" + digits[curr];
+      count++;
     } else {
       digits[curr] = digits[curr].replace("(-", "");
+      count--;
     }
     setState((prev) => ({
       ...prev,
-      digits: digits,
+      digits,
+      count,
     }));
   };
 
@@ -175,8 +180,6 @@ export default function Calc() {
         : console.log("%ed");
     }
 
-    function invaildFormat() {}
-
     setState((prev) => ({
       ...prev,
       digits: digits,
@@ -184,55 +187,94 @@ export default function Calc() {
     }));
   };
 
+  function invaildFormat() {
+    const ele = document.getElementById("notify");
+    if (view.note === false) {
+      ele!.innerHTML = "Invalid Format";
+      ele!.classList.replace("-top-20", "top-0");
+      setView((prev) => ({
+        ...prev,
+        note: true,
+      }));
+      setTimeout(() => {
+        ele?.classList.replace("top-0", "-top-20");
+        setView((prev) => ({
+          ...prev,
+          note: false,
+        }));
+      }, 2000);
+    }
+  }
+
   function maintainPercent() {
     let { digits, ops } = state;
-    digits.forEach((digit, i) => {
+    console.log(ops[0] === ("-" || "+"));
+    const maintained = digits.map((digit, i) => {
       if (digit.indexOf("%") !== -1) {
         if (
-          ops[i - 1].match("+" || "-" || undefined) &&
-          ops[i].match("+" || "-" || undefined)
+          ops[i - 1] === ("+" || "-") &&
+          ops[i] === ("+" || "-" || undefined)
         ) {
-          digit =
+          return (
             digit.slice(0, digit.indexOf("%")) +
             "/100*" +
             doMath(
               digits.splice(i, digits.length - i + 1),
               ops.splice(i - 1, ops.length - i + 2)
-            );
+            )
+          );
         }
-      } else {
-        digit = digit.slice(0, digit.indexOf("%")) + "/100";
+        else {
+          return digit.slice(0, -1) + "/100";
+        }
       }
+      else{
+        return digit
+      } 
     });
-    return digits;
+    console.log(maintained);
+    return maintained;
   }
 
   function doMath(digits: string[], ops: string[]) {
+    let { count } = state;
     let total = [];
     for (let i = 0; i < digits.length; i++) {
       total.push(digits[i]);
       if (ops[i] !== undefined) {
-        ops[i] !== "×" ? total.push(ops[i]) : total.push("*");
+        ops[i] !== "×"
+          ? ops[i] !== "÷"
+            ? total.push(ops[i])
+            : total.push("/")
+          : total.push("*");
       }
     }
+    while (count > 0) {
+      total[total.length - 1] += ")";
+      count--;
+    }
     try {
-      return Number(Function(`return ${total.join()}`));
+      return Number(Function(`return ${total.join("")}`)());
     } catch (error) {
       console.log(error);
       return undefined;
     }
   }
-
+  function strip(number: number) {
+    return parseFloat(number.toPrecision(12));
+  }
   function equal() {
     const maintained = maintainPercent();
     const results = doMath(maintained, state.ops);
-    setState((prev) => ({
-      ...prev,
-      results: results,
-    }));
+    if (results !== undefined)
+      setState((prev) => ({
+        ...prev,
+        results: strip(results),
+      }));
     results !== undefined
-      ? (document.getElementById("result")!.innerHTML = results.toString())
-      : (document.getElementById("result")!.innerHTML = "0");
+      ? (document.getElementById("result")!.innerHTML =
+          strip(results).toString())
+      : invaildFormat();
   }
 
   useEffect(() => {
@@ -243,9 +285,6 @@ export default function Calc() {
         total.push(state.ops[i]);
       }
     }
-    if (state.digits[state.curr] !== undefined)
-      console.log(state.digits[state.curr].includes(")" || "%"));
-    console.log(state);
     setTotal((prev) => ({
       ...prev,
       showed: total,
@@ -296,7 +335,7 @@ export default function Calc() {
       </button>
       <div
         id="calc"
-        className="duration-200 w-96 left-2 mt-2 shadow-2xl fixed w-4/5 max-w-lg z-40"
+        className="overflow-hidden duration-200 w-96 left-2 mt-2 shadow-2xl fixed w-4/5 max-w-lg z-40"
       >
         <Screen />
         <Buttons ids={IDs} click={maintainClick} />
@@ -309,7 +348,9 @@ const Screen = () => {
   return (
     <div className="align-center w-full bg-sky-600 p-10 rounded-tl rounded-tr">
       <Notify />
-      <p id="input" className="p-3">0</p>
+      <p id="input" className="p-3 break-words">
+        0
+      </p>
       <h2 id="result" className="text-2xl p-3">
         {" "}
         infinity
@@ -322,7 +363,7 @@ const Notify = () => {
   return (
     <p
       id="notify"
-      className="p-2 shadow-xl font-bold duration-200 rounded-bl-sm rounded-br-sm bg-white text-sky-600 absolute top-0 left-20"
+      className="p-2 shadow-xl font-bold duration-200 rounded-bl-sm rounded-br-sm bg-white text-sky-600 absolute -top-20 left-20"
     ></p>
   );
 };
@@ -334,11 +375,11 @@ interface Props {
 const Buttons = (props: Props) => {
   const { ids, click } = props;
   const digitClass =
-    "w-1/4 h-10 text-sky-600 rounded-full duration-200 hover:bg-sky-600 hover:text-white";
+    "w-1/4 h-10 text-sky-600 rounded-full duration-200 hover:bg-sky-600 hover:text-white active:bg-sky-600 active:text-white";
   const opClass =
-    "w-1/4 h-10 text-gray-600 rounded-lg duration-200 hover:bg-sky-600 active:bg-gray-400";
+    "w-1/4 h-10 text-gray-600 rounded-lg duration-200 hover:bg-sky-600 active:bg-sky-600";
   const clearClass =
-    "w-1/4 h-10 text-red-600 rounded-lg duration-200 hover:bg-sky-600 active:bg-gray-400";
+    "w-1/4 h-10 text-red-600 rounded-lg duration-200 hover:bg-sky-600 active:bg-sky-600";
 
   return (
     <div
