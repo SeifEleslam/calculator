@@ -8,15 +8,17 @@ export default function Calc() {
     results: number | undefined;
     curr: number;
     count: number;
-    levelIndex: number[];
-    percentLevel: number[]
+    startLevelIndex: number[];
+    endLevelIndex: number[];
+    percentLevel: number[];
   }>({
     digits: [""],
     ops: [""],
     results: 0,
     curr: 0,
     count: 0,
-    levelIndex:[0],
+    startLevelIndex: [0],
+    endLevelIndex: [],
     percentLevel: [],
   });
   const [view, setView] = useState({
@@ -54,6 +56,7 @@ export default function Calc() {
 
   const maintainClick = (val: string) => {
     if (val === "C") clear();
+    else if (val === "backspace") backspace();
     else if (val === "=") equal();
     else if (!isNaN(Number(val))) addDigit(val);
     else if (val === "+/-") changeSign();
@@ -61,13 +64,49 @@ export default function Calc() {
     else if (val === "()") addSpcial("()");
     else if (val === "%") addSpcial("%");
     else addOp(val);
-    /*else if (val === "()")            addSpcial("()")
-        else if (val === "%")               addSpcial("%")
-        else if (val === "+/-")             changeSign()
-        else if (val === ".")               addDot()
-        else if (val === "=")               showResults()
-        else if (!isNaN(Number(val)))       addDigit(val)
-        else                                addOp(val)*/
+  };
+
+  const backspace = () => {
+    let {
+      digits,
+      ops,
+      curr,
+      startLevelIndex,
+      endLevelIndex,
+      percentLevel,
+      count,
+    } = state;
+    const end = digits[curr]?.slice(-1) ?? "";
+    console.log(end);
+    if (end === "") {
+      console.log(end);
+      ops.pop();
+      curr--;
+    } else if (!isNaN(Number(end)) || end === ".") {
+      digits[curr] = digits[curr].slice(0, -1);
+    } else if (end === "(") {
+      digits[curr] = digits[curr].slice(0, -1);
+      startLevelIndex.pop();
+      count--;
+    } else if (end === ")") {
+      digits[curr] = digits[curr].slice(0, -1);
+      endLevelIndex.pop();
+      count++;
+    } else if (end === "%") {
+      digits[curr] = digits[curr].slice(0, -1);
+      percentLevel.pop();
+    }
+
+    setState((prev) => ({
+      ...prev,
+      digits,
+      ops,
+      curr,
+      startLevelIndex,
+      endLevelIndex,
+      percentLevel,
+      count,
+    }));
   };
 
   const clear = () => {
@@ -77,8 +116,9 @@ export default function Calc() {
       results: 0,
       curr: 0,
       count: 0,
-      levelIndex: [0],
-      percentLevel:[]
+      startLevelIndex: [0],
+      endLevelIndex: [],
+      percentLevel: [],
     });
   };
 
@@ -105,7 +145,7 @@ export default function Calc() {
   };
 
   const addOp = (val: string, val2?: string) => {
-    let { digits, ops, curr, count, levelIndex } = state;
+    let { digits, ops, curr, count, startLevelIndex } = state;
     if (digits[curr] === "" || digits[curr] === undefined) {
       ops[curr - 1] = val;
     } else {
@@ -115,7 +155,7 @@ export default function Calc() {
         digits[curr] = val2;
         if (val2 === "(") {
           count++;
-          levelIndex.push(curr);
+          startLevelIndex.push(curr);
         }
       }
     }
@@ -124,7 +164,7 @@ export default function Calc() {
       ops,
       curr,
       count,
-      levelIndex,
+      startLevelIndex,
     }));
   };
 
@@ -160,17 +200,18 @@ export default function Calc() {
   };
 
   const addSpcial: Function = (val: string) => {
-    let { digits, curr, count, levelIndex, percentLevel} = state;
+    let { digits, curr, count, startLevelIndex, percentLevel, endLevelIndex } =
+      state;
     let str: string;
     digits[curr] !== undefined ? (str = digits[curr].slice(-1)) : (str = "");
     if (val === "()") {
       if (digits[curr] === "" || digits[curr] === undefined) {
         digits[curr] = "(";
-        levelIndex.push(curr);
+        startLevelIndex.push(curr);
         count++;
       } else if (count > 0 && str !== "(") {
         digits[curr] += ")";
-        levelIndex.pop();
+        endLevelIndex.push(curr);
         count--;
       } else if (
         str.includes("%") ||
@@ -181,14 +222,19 @@ export default function Calc() {
         return;
       } else {
         digits[curr] += "(";
-        levelIndex.push(curr);
+        startLevelIndex.push(curr);
         count++;
       }
     } else if (val === "%") {
-      if(digits[curr] === "" || digits[curr] === undefined) invaildFormat()
-      else if (digits[curr].indexOf("%") === -1 && !isNaN(Number(digits[curr][digits[curr].length - 1]))){
-        digits[curr] += "%"
-        percentLevel.push(levelIndex[levelIndex.length-1])
+      if (digits[curr] === "" || digits[curr] === undefined) invaildFormat();
+      else if (
+        digits[curr].indexOf("%") === -1 &&
+        !isNaN(Number(digits[curr][digits[curr].length - 1]))
+      ) {
+        digits[curr] += "%";
+        percentLevel.push(
+          startLevelIndex[startLevelIndex.length - endLevelIndex.length]
+        );
       }
     }
 
@@ -196,7 +242,8 @@ export default function Calc() {
       ...prev,
       digits,
       count,
-      levelIndex,
+      startLevelIndex,
+      endLevelIndex,
     }));
   };
 
@@ -228,19 +275,19 @@ export default function Calc() {
           ["+", "-"].indexOf(ops[i - 1]) + 1 &&
           ["+", "-", undefined].indexOf(ops[1]) + 1
         ) {
-          l++
+          l++;
           return (
-            digit.replace("%","") +
+            digit.replace("%", "") +
             "/100*" +
             doMath(
-              digits.slice(percentLevel[l-1], i),
-              ops.slice(percentLevel[l-1], i - 1),
-              getCount(digits.slice(percentLevel[l-1], i))
+              digits.slice(percentLevel[l - 1], i),
+              ops.slice(percentLevel[l - 1], i - 1),
+              getCount(digits.slice(percentLevel[l - 1], i))
             )
           );
         } else {
-          l++
-          return digit.slice(0, -1) + "/100";
+          l++;
+          return digit.replace("%", "") + "/100";
         }
       } else {
         return digit;
@@ -250,13 +297,13 @@ export default function Calc() {
     return maintained;
   }
 
-  function getCount(arr:string[]) { 
+  function getCount(arr: string[]) {
     let count = 0;
-    for(let i = 0; i < arr.length; i++){
-      if(arr[i].indexOf("(") !== -1) count++;
-      if(arr[i].indexOf(")") !== -1) count--;
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i].indexOf("(") !== -1) count++;
+      if (arr[i].indexOf(")") !== -1) count--;
     }
-    return count
+    return count;
   }
 
   function doMath(digits: string[], ops: string[], count = state.count) {
@@ -271,12 +318,12 @@ export default function Calc() {
           : total.push("*");
       }
     }
-    console.log(count)
+    console.log(count);
     while (count > 0) {
       total[total.length - 1] += ")";
       count--;
     }
-    console.log(total)
+    console.log(total);
     try {
       return Number(Function(`return ${total.join("")}`)());
     } catch (error) {
@@ -304,7 +351,6 @@ export default function Calc() {
   }
 
   useEffect(() => {
-    console.log(state.digits);
     let total: string[] = [];
     for (let i = 0; i < state.digits.length; i++) {
       total.push(state.digits[i]);
@@ -364,14 +410,17 @@ export default function Calc() {
         id="calc"
         className="overflow-hidden duration-200 w-96 left-2 mt-2 shadow-2xl fixed w-4/5 max-w-lg z-40"
       >
-        <Screen />
+        <Screen click={maintainClick} />
         <Buttons ids={IDs} click={maintainClick} />
       </div>
     </div>
   );
 }
-
-const Screen = () => {
+type screenProps = {
+  click: (id: string) => void;
+};
+const Screen = (props: screenProps) => {
+  const { click } = props;
   return (
     <div className="align-center w-full bg-sky-600 p-10 rounded-tl rounded-tr">
       <Notify />
@@ -380,8 +429,26 @@ const Screen = () => {
       </p>
       <h2 id="result" className="text-2xl p-3">
         {" "}
-        infinity
+        0
       </h2>
+      <div className="flex justify-between">
+        <button
+          onClick={() => {
+            click("history");
+          }}
+          className="text-white p-2 hover:shadow-lg active:shadow-lg"
+        >
+          history
+        </button>
+        <button
+          onClick={() => {
+            click("backspace");
+          }}
+          className="text-white p-2 hover:shadow-lg active:shadow-lg"
+        >
+          back
+        </button>
+      </div>
     </div>
   );
 };
