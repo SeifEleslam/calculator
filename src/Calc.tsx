@@ -27,6 +27,12 @@ export default function Calc() {
     note: false,
   });
 
+  const [hst, setHst] = useState<{
+    hst: typeof state[];
+  }>({
+    hst: [],
+  });
+
   const [total, setTotal] = useState({
     showed: [""],
     hidden: [""],
@@ -56,6 +62,7 @@ export default function Calc() {
 
   const maintainClick = (val: string) => {
     if (val === "C") clear();
+    else if (val === "history") toggleHistory();
     else if (val === "backspace") backspace();
     else if (val === "=") equal();
     else if (!isNaN(Number(val))) addDigit(val);
@@ -64,6 +71,27 @@ export default function Calc() {
     else if (val === "()") addSpcial("()");
     else if (val === "%") addSpcial("%");
     else addOp(val);
+  };
+
+  const toggleHistory = () => {
+    const hist = document.getElementById("hist");
+    const btn = document.getElementById("toggleHist");
+
+    if (hist && view.menu === true) {
+      hist.classList.replace("-bottom-[0px]", "-bottom-[150px]");
+      if (btn) btn.classList.remove("rotate-180");
+      setView((prev) => ({
+        ...prev,
+        menu: false,
+      }));
+    } else if (hist && view.menu === false) {
+      hist.classList.replace("-bottom-[150px]", "-bottom-[0px]");
+      if (btn) btn.classList.add("rotate-180");
+      setView((prev) => ({
+        ...prev,
+        menu: true,
+      }));
+    }
   };
 
   const backspace = () => {
@@ -135,7 +163,7 @@ export default function Calc() {
       (digits[curr].slice(-2, -1) === "" ||
         isNaN(Number(digits[curr].slice(-2, -1))))
     ) {
-      digits[curr] = digits[curr].slice(0,-1) + val;
+      digits[curr] = digits[curr].slice(0, -1) + val;
     } else if (str.includes("%") || str.includes(")")) {
       addOp("×", val);
       return;
@@ -239,7 +267,7 @@ export default function Calc() {
       ) {
         digits[curr] += "%";
         percentLevel.push(
-          startLevelIndex[startLevelIndex.length - endLevelIndex.length]
+          startLevelIndex[startLevelIndex.length - endLevelIndex.length - 1]
         );
       }
     }
@@ -286,49 +314,57 @@ export default function Calc() {
             digit.indexOf(")") >= 0
           ) {
             l++;
-            return digit.replace(
-              "%",
-              "/100*" +
-                doMath(
-                  digits.slice(
-                    startLevelIndex[
-                      startLevelIndex.lastIndexOf(percentLevel[l]) -
-                        repNumber(digit, ")")
-                    ],
-                    percentLevel[l]
-                  ),
-                  ops.slice(
-                    startLevelIndex[
-                      startLevelIndex.lastIndexOf(percentLevel[l]) -
-                        repNumber(digit, ")")
-                    ],
-                    percentLevel[l] - 1
-                  ),
-                  getCount(
+
+            return (
+              "(" +
+              digit.replace(
+                "%",
+                "/100*" +
+                  doMath(
                     digits.slice(
+                      percentLevel[l],
+                      startLevelIndex[
+                        startLevelIndex.indexOf(percentLevel[l]) + 1
+                      ]
+                    ),
+                    ops.slice(
                       startLevelIndex[
                         startLevelIndex.lastIndexOf(percentLevel[l]) -
                           repNumber(digit, ")")
                       ],
-                      percentLevel[l]
+                      percentLevel[l] - 1
+                    ),
+                    getCount(
+                      digits.slice(
+                        startLevelIndex[
+                          startLevelIndex.lastIndexOf(percentLevel[l]) -
+                            repNumber(digit, ")")
+                        ],
+                        percentLevel[l]
+                      )
                     )
-                  )
-                )
+                  ) +
+                  ")"
+              )
             );
           }
           l++;
-          return digit.replace(
-            "%",
-            "/100*" +
-              doMath(
-                digits.slice(percentLevel[l], i),
-                ops.slice(percentLevel[l], i - 1),
-                getCount(digits.slice(percentLevel[l - 1], i))
-              )
+          return (
+            "(" +
+            digit.replace(
+              "%",
+              "/100*" +
+                doMath(
+                  digits.slice(percentLevel[l], i),
+                  ops.slice(percentLevel[l], i - 1),
+                  getCount(digits.slice(percentLevel[l - 1], i))
+                )
+            ) +
+            ")"
           );
         } else {
           l++;
-          return digit.replace("%", "/100");
+          return "(" + digit.replace("%", "/100") + ")";
         }
       } else {
         return digit;
@@ -356,6 +392,7 @@ export default function Calc() {
 
   function doMath(digits: string[], ops: string[], count = state.count) {
     let total = [];
+    console.log(digits);
     for (let i = 0; i < digits.length; i++) {
       total.push(digits[i]);
       if (ops[i] !== undefined) {
@@ -455,10 +492,11 @@ export default function Calc() {
       </button>
       <div
         id="calc"
-        className="overflow-hidden duration-200 w-96 left-2 mt-2 shadow-2xl fixed w-4/5 max-w-lg z-40"
+        className="overflow-hidden duration-200 left-2 mt-2 shadow-2xl fixed w-4/5 max-w-lg z-40"
       >
         <Screen click={maintainClick} />
         <Buttons ids={IDs} click={maintainClick} />
+        <History />
       </div>
     </div>
   );
@@ -471,19 +509,20 @@ const Screen = (props: screenProps) => {
   return (
     <div className="align-center w-full bg-sky-600 p-10 rounded-tl rounded-tr">
       <Notify />
-      <p id="input" className="p-3 break-words">
+      <p id="input" className="p-3 h-14 break-words overflow-y-auto">
         0
       </p>
-      <h2 id="result" className="text-2xl p-3">
+      <h2 id="result" className="text-2xl p-3 overflow-x-auto w-full">
         {" "}
         0
       </h2>
       <div className="flex justify-between">
         <button
+          id="toggleHist"
           onClick={() => {
             click("history");
           }}
-          className="text-white p-2 hover:shadow-lg active:shadow-lg"
+          className="duration-200 text-white p-2 hover:shadow-lg active:shadow-lg"
         >
           history
         </button>
@@ -513,6 +552,26 @@ interface Props {
   click: (id: string) => void;
 }
 
+type hstProps = {};
+
+const History = (props: hstProps) => {
+  return (
+    <div id="hist" className="duration-200 p-2 bg-white absolute left-0 -bottom-[150px] h-40 w-3/4 shadow-xl">
+      <div className="text-left h-3/4 overflow-y-auto">
+        <div className="w-full leading-10">
+          <p>string</p>
+        </div>
+        <div className="w-full leading-10 mb-3">
+          <p>results</p>
+        </div>
+      </div>
+      <button className="m-0 p-2 text-white rounded-full duration-200 bg-sky-600 hover:text-white active:bg-sky-600 active:text-white">
+        Clear
+      </button>
+    </div>
+  );
+};
+
 const Buttons = (props: Props) => {
   const { ids, click } = props;
   const digitClass =
@@ -525,7 +584,7 @@ const Buttons = (props: Props) => {
   return (
     <div
       id="buttons"
-      className="overflow-auto bg-gray-100 flex-auto rounded-bl rounded-br py-2"
+      className="bg-gray-100 flex-auto rounded-bl rounded-br pt-2"
     >
       {ids.map((id) => (
         <button
