@@ -128,9 +128,14 @@ export default function Calc() {
     digits[curr] !== undefined && digits[curr] !== ""
       ? (str = digits[curr].slice(-1))
       : (str = "");
-
     if (digits.length === 0 || digits[curr] === undefined) {
       digits.push(val);
+    } else if (
+      str === "0" &&
+      (digits[curr].slice(-2, -1) === "" ||
+        isNaN(Number(digits[curr].slice(-2, -1))))
+    ) {
+      digits[curr] = digits[curr].slice(0,-1) + val;
     } else if (str.includes("%") || str.includes(")")) {
       addOp("×", val);
       return;
@@ -229,7 +234,8 @@ export default function Calc() {
       if (digits[curr] === "" || digits[curr] === undefined) invaildFormat();
       else if (
         digits[curr].indexOf("%") === -1 &&
-        (!isNaN(Number(digits[curr].slice(-1))) || digits[curr].slice(-1) === ")")
+        (!isNaN(Number(digits[curr].slice(-1))) ||
+          digits[curr].slice(-1) === ")")
       ) {
         digits[curr] += "%";
         percentLevel.push(
@@ -275,26 +281,50 @@ export default function Calc() {
           ["+", "-"].indexOf(ops[i - 1]) + 1 &&
           ["+", "-", undefined].indexOf(ops[1]) + 1
         ) {
-          if(digit.indexOf("%") > digit.indexOf(")") && digit.indexOf(")") >= 0){
-            l++
-            return (
-              digit.replace("%", "/100*" +
-            doMath(
-              digits.slice(startLevelIndex[startLevelIndex.lastIndexOf(percentLevel[l])-repNumber(digit,")")], percentLevel[l]),
-              ops.slice(startLevelIndex[startLevelIndex.lastIndexOf(percentLevel[l])-repNumber(digit,")")], percentLevel[l]-1),
-              getCount(digits.slice(startLevelIndex[startLevelIndex.lastIndexOf(percentLevel[l])-repNumber(digit,")")], percentLevel[l]))
-            ))
-            )
+          if (
+            digit.indexOf("%") > digit.indexOf(")") &&
+            digit.indexOf(")") >= 0
+          ) {
+            l++;
+            return digit.replace(
+              "%",
+              "/100*" +
+                doMath(
+                  digits.slice(
+                    startLevelIndex[
+                      startLevelIndex.lastIndexOf(percentLevel[l]) -
+                        repNumber(digit, ")")
+                    ],
+                    percentLevel[l]
+                  ),
+                  ops.slice(
+                    startLevelIndex[
+                      startLevelIndex.lastIndexOf(percentLevel[l]) -
+                        repNumber(digit, ")")
+                    ],
+                    percentLevel[l] - 1
+                  ),
+                  getCount(
+                    digits.slice(
+                      startLevelIndex[
+                        startLevelIndex.lastIndexOf(percentLevel[l]) -
+                          repNumber(digit, ")")
+                      ],
+                      percentLevel[l]
+                    )
+                  )
+                )
+            );
           }
           l++;
-          return (
-            digit.replace("%", "/100*" +
-            doMath(
-              digits.slice(percentLevel[l], i),
-              ops.slice(percentLevel[l], i - 1),
-              getCount(digits.slice(percentLevel[l - 1], i))
-            )) 
-            
+          return digit.replace(
+            "%",
+            "/100*" +
+              doMath(
+                digits.slice(percentLevel[l], i),
+                ops.slice(percentLevel[l], i - 1),
+                getCount(digits.slice(percentLevel[l - 1], i))
+              )
           );
         } else {
           l++;
@@ -307,10 +337,10 @@ export default function Calc() {
     return maintained;
   }
 
-  function repNumber (str:string, substr:string) {
-    let count = 0 ;
-    for (let i = 1; i<str.length-1; i++){
-      if(str.indexOf(substr.repeat(i)) >= 0) count = i
+  function repNumber(str: string, substr: string) {
+    let count = 0;
+    for (let i = 1; i < str.length - 1; i++) {
+      if (str.indexOf(substr.repeat(i)) >= 0) count = i;
     }
     return count;
   }
@@ -340,7 +370,7 @@ export default function Calc() {
       total[total.length - 1] += ")";
       count--;
     }
-    if (total.join("") === "") return 1
+    if (total.join("") === "") return 1;
     try {
       return Number(Function(`return ${total.join("")}`)());
     } catch (error) {
