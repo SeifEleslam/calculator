@@ -1,5 +1,7 @@
 /* eslint-disable no-new-func */
 import React, { useState, useEffect } from "react";
+import { VscHistory } from "react-icons/vsc";
+import { BsFillReplyFill } from "react-icons/bs";
 
 export default function Calc() {
   const [state, setState] = useState<{
@@ -27,15 +29,16 @@ export default function Calc() {
     note: false,
   });
 
-  const [hst, setHst] = useState<{
-    hst: typeof state[];
+  const [hist, setHist] = useState<{
+    histList: typeof state[];
+    showed: string[];
   }>({
-    hst: [],
+    histList: [],
+    showed: [],
   });
 
   const [total, setTotal] = useState({
     showed: [""],
-    hidden: [""],
   });
   const IDs = [
     "C",
@@ -63,6 +66,7 @@ export default function Calc() {
   const maintainClick = (val: string) => {
     if (val === "C") clear();
     else if (val === "history") toggleHistory();
+    else if (val === "clearHistory") clearHistory();
     else if (val === "backspace") backspace();
     else if (val === "=") equal();
     else if (!isNaN(Number(val))) addDigit(val);
@@ -73,19 +77,26 @@ export default function Calc() {
     else addOp(val);
   };
 
+  const clearHistory = () => {
+    setHist({
+      histList: [],
+      showed: [],
+    });
+  };
+
   const toggleHistory = () => {
     const hist = document.getElementById("hist");
     const btn = document.getElementById("toggleHist");
 
     if (hist && view.menu === true) {
-      hist.classList.replace("-bottom-[0px]", "-bottom-[150px]");
+      hist.classList.replace("-bottom-[0px]", "-bottom-[160px]");
       if (btn) btn.classList.remove("rotate-180");
       setView((prev) => ({
         ...prev,
         menu: false,
       }));
     } else if (hist && view.menu === false) {
-      hist.classList.replace("-bottom-[150px]", "-bottom-[0px]");
+      hist.classList.replace("-bottom-[160px]", "-bottom-[0px]");
       if (btn) btn.classList.add("rotate-180");
       setView((prev) => ({
         ...prev,
@@ -135,6 +146,11 @@ export default function Calc() {
       percentLevel,
       count,
     }));
+  };
+
+  const loadHist = (val: typeof state) => {
+    setState(val);
+    console.log(val)
   };
 
   const clear = () => {
@@ -422,20 +438,30 @@ export default function Calc() {
     let { results } = state;
     const maintained = maintainPercent();
     results = doMath(maintained, state.ops);
-    if (results !== undefined) {
+    if (total.showed.join("") !== "" && results !== undefined) {
       setState((prev) => ({
         ...prev,
         results: strip(results!),
       }));
     }
-    results !== undefined
-      ? (document.getElementById("result")!.innerHTML =
-          strip(results).toString())
-      : invaildFormat();
+    if (
+      total.showed.join("") !== results?.toString() &&
+      results !== undefined
+    ) {
+      setHist({
+        histList: [...hist.histList, { ...state, results }],
+        showed: [...hist.showed, total.showed.join("")],
+      });
+    }
   }
 
   useEffect(() => {
     let total: string[] = [];
+    if (state.results !== undefined) {
+      document.getElementById("result")!.innerHTML = strip(
+        state.results
+      ).toString();
+    }
     for (let i = 0; i < state.digits.length; i++) {
       total.push(state.digits[i]);
       if (state.ops[i] !== undefined) {
@@ -452,7 +478,7 @@ export default function Calc() {
     if (total.showed.join("") === "")
       document.getElementById("input")!.innerHTML = "0";
     else document.getElementById("input")!.innerHTML = total.showed.join("");
-  }, [total.showed]);
+  }, [total]);
 
   return (
     <div>
@@ -496,7 +522,7 @@ export default function Calc() {
       >
         <Screen click={maintainClick} />
         <Buttons ids={IDs} click={maintainClick} />
-        <History />
+        <History hist={hist} post={loadHist} click={maintainClick} />
       </div>
     </div>
   );
@@ -522,17 +548,17 @@ const Screen = (props: screenProps) => {
           onClick={() => {
             click("history");
           }}
-          className="duration-200 text-white p-2 hover:shadow-lg active:shadow-lg"
+          className="duration-200 text-white p-2 hover:text-gray-300 active:text-gray-500"
         >
-          history
+          <VscHistory />
         </button>
         <button
           onClick={() => {
             click("backspace");
           }}
-          className="text-white p-2 hover:shadow-lg active:shadow-lg"
+          className="duration-200 text-white p-2 hover:text-gray-300 active:text-gray-500"
         >
-          back
+          <BsFillReplyFill />
         </button>
       </div>
     </div>
@@ -552,20 +578,56 @@ interface Props {
   click: (id: string) => void;
 }
 
-type hstProps = {};
+type histProps = {
+  hist: {
+    histList: {
+      digits: string[];
+      ops: string[];
+      results: number | undefined;
+      curr: number;
+      count: number;
+      startLevelIndex: number[];
+      endLevelIndex: number[];
+      percentLevel: number[];
+    }[];
+    showed: string[];
+  };
+  post: (val: {
+    digits: string[];
+    ops: string[];
+    results: number | undefined;
+    curr: number;
+    count: number;
+    startLevelIndex: number[];
+    endLevelIndex: number[];
+    percentLevel: number[];
+  }) => void;
+  click: (id: string) => void;
+};
 
-const History = (props: hstProps) => {
+const History = (props: histProps) => {
+  const { hist, post, click } = props;
   return (
-    <div id="hist" className="duration-200 p-2 bg-white absolute left-0 -bottom-[150px] h-40 w-3/4 shadow-xl">
-      <div className="text-left h-3/4 overflow-y-auto">
-        <div className="w-full leading-10">
-          <p>string</p>
-        </div>
-        <div className="w-full leading-10 mb-3">
-          <p>results</p>
-        </div>
+    <div
+      id="hist"
+      className="duration-200 p-2 bg-white absolute left-0 -bottom-[160px] h-40 w-3/4 shadow-xl"
+    >
+      <div className="text-left h-3/4 overflow-y-auto m-1">
+        {hist.histList.map((histo, i) => (
+          <div key={i} onClick={() => post(histo)} className="duration-200 cursor-pointer p-3 rounded hover:bg-gray-300">
+            <div className="w-full leading-10">
+              <p>{hist.showed[i]}</p>
+            </div>
+            <div className="w-full text-sky-600 leading-10">
+              <p>= {histo.results ?? 0}</p>
+            </div>
+          </div>
+        ))}
       </div>
-      <button className="m-0 p-2 text-white rounded-full duration-200 bg-sky-600 hover:text-white active:bg-sky-600 active:text-white">
+      <button
+        onClick={() => click("clearHistory")}
+        className="m-0 p-2 text-white rounded-full duration-200 bg-sky-600 hover:text-white active:bg-sky-600 active:text-white"
+      >
         Clear
       </button>
     </div>
