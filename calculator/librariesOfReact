@@ -1,0 +1,23 @@
+tailwindcss:
+    {npm install -D tailwindcss postcss autoprefixer
+
+    npx tailwindcss init -p
+
+    tailwind.config.js:
+    content: [
+        "./src/**/*.{js,jsx,ts,tsx}",
+    ],
+
+    index.css:
+    @tailwind base;
+    @tailwind components;
+    @tailwind utilities;}
+
+React-router-dom:
+    npm install react-router-dom@6
+
+TypeScript:
+    new:
+        npx create-react-app my-app --template typescript
+    existing:
+        npm install --save typescript @types/node @types/react @types/react-dom @types/jest
