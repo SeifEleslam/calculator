@@ -128,8 +128,7 @@ export default function Calc() {
   };
 
   const loadHist = (val: state) => {
-    const data = { ...val };
-    setState({ ...data });
+    setState(JSON.parse(JSON.stringify(val)));
   };
 
   const clear = () => {
@@ -429,7 +428,9 @@ export default function Calc() {
     ) {
       dispatch(
         add({
-          statePayload: { ...state, results },
+          statePayload: JSON.parse(
+            JSON.stringify({ ...state, results: Number(strip(results)) })
+          ),
           showedPayload: total.showed.join(""),
         })
       );
