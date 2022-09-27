@@ -5,7 +5,6 @@ import { RootState } from "../../store";
 export interface state {
   digits: string[];
   ops: string[];
-  results: number | undefined;
   curr: number;
   count: number;
   startLevelIndex: number[];
@@ -15,15 +14,18 @@ export interface state {
 interface payload {
   statePayload: state;
   showedPayload: string;
+  resultsPayload: number;
 }
 export interface histState {
   histList: state[];
   showed: string[];
+  results: number[];
 }
 
 const initialState: histState = {
   histList: [],
   showed: [],
+  results: [],
 };
 
 export const histSlice = createSlice({
@@ -33,6 +35,7 @@ export const histSlice = createSlice({
     add: (state, action: PayloadAction<payload>) => {
       state.histList = [...state.histList, action.payload.statePayload];
       state.showed = [...state.showed, action.payload.showedPayload];
+      state.results = [...state.results, action.payload.resultsPayload];
     },
     clear: (state) => {
       state.histList = [];

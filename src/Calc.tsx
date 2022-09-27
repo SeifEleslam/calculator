@@ -8,10 +8,11 @@ import { add, clear, selectHist, state } from "./features/history/histSlice";
 export default function Calc() {
   const dispatch = useDispatch();
 
+  const [results, setResults] = useState<number | undefined>(0);
+
   const [state, setState] = useState<state>({
     digits: [""],
     ops: [""],
-    results: 0,
     curr: 0,
     count: 0,
     startLevelIndex: [0],
@@ -54,7 +55,7 @@ export default function Calc() {
     if (val === "C") clear();
     else if (val === "history") toggleHistory();
     else if (val === "backspace") backspace();
-    else if (val === "=") equal();
+    else if (val === "=") equal("=");
     else if (!isNaN(Number(val))) addDigit(val);
     else if (val === "+/-") changeSign();
     else if (val === ".") addDot();
@@ -68,14 +69,14 @@ export default function Calc() {
     const btn = document.getElementById("toggleHist");
 
     if (hist && view.menu === true) {
-      hist.classList.replace("-bottom-[0px]", "-bottom-[160px]");
+      hist.classList.replace("-bottom-[0px]", "-bottom-[200px]");
       if (btn) btn.classList.remove("rotate-180");
       setView((prev) => ({
         ...prev,
         menu: false,
       }));
     } else if (hist && view.menu === false) {
-      hist.classList.replace("-bottom-[160px]", "-bottom-[0px]");
+      hist.classList.replace("-bottom-[200px]", "-bottom-[0px]");
       if (btn) btn.classList.add("rotate-180");
       setView((prev) => ({
         ...prev,
@@ -95,9 +96,7 @@ export default function Calc() {
       count,
     } = state;
     const end = digits[curr]?.slice(-1) ?? "";
-    console.log(end);
     if (end === "" && curr !== 0) {
-      console.log(end);
       ops.pop();
       curr--;
     } else if (!isNaN(Number(end)) || end === "." || end === "-") {
@@ -127,21 +126,22 @@ export default function Calc() {
     }));
   };
 
-  const loadHist = (val: state) => {
+  const loadHist = (val: state, val2: number) => {
     setState(JSON.parse(JSON.stringify(val)));
+    setResults(val2);
   };
 
   const clear = () => {
     setState({
       digits: [""],
       ops: [""],
-      results: 0,
       curr: 0,
       count: 0,
       startLevelIndex: [0],
       endLevelIndex: [],
       percentLevel: [],
     });
+    setResults(0);
   };
 
   const addDigit = (val: string) => {
@@ -219,11 +219,11 @@ export default function Calc() {
       ? (digits[curr] = "0.")
       : digits[curr].indexOf(".") === -1
       ? (digits[curr] += ".")
-      : console.log("dotted");
-    setState((prev) => ({
-      ...prev,
-      digits: digits,
-    }));
+      : //do noting;
+        setState((prev) => ({
+          ...prev,
+          digits: digits,
+        }));
   };
 
   const addSpcial: Function = (val: string) => {
@@ -253,7 +253,8 @@ export default function Calc() {
         count++;
       }
     } else if (val === "%") {
-      if (digits[curr] === "" || digits[curr] === undefined) invaildFormat();
+      if (digits[curr] === "" || digits[curr] === undefined)
+        console.log("invaild format");
       else if (
         digits[curr].indexOf("%") === -1 &&
         (!isNaN(Number(digits[curr].slice(-1))) ||
@@ -310,9 +311,6 @@ export default function Calc() {
               maintained[i].indexOf("%") > maintained[i].indexOf(")") &&
               maintained[i].indexOf(")") >= 0
             ) {
-              console.log(
-                "(" + maintained[startLevelIndex[percentLevel[l] + 1]]
-              );
               maintained[startLevelIndex[percentLevel[l] + 1]] =
                 "(" + maintained[startLevelIndex[percentLevel[l] + 1]];
               maintained[i] =
@@ -342,7 +340,6 @@ export default function Calc() {
                       )
                     )
                 ) + ")";
-              console.log(maintained[i]);
             } else {
               maintained[i] =
                 "(" +
@@ -379,7 +376,6 @@ export default function Calc() {
 
   function doMath(digits: string[], ops: string[], count = state.count) {
     let total = [];
-    console.log(digits);
     for (let i = 0; i < digits.length; i++) {
       total.push(digits[i]);
       if (ops[i] !== undefined) {
@@ -395,61 +391,79 @@ export default function Calc() {
       count--;
     }
     if (total.join("") === "") return 1;
-    console.log(total.join(""), ops);
-
     try {
-      console.log(Number(Function(`return ${total.join("")}`)()));
       return Number(Function(`return ${total.join("")}`)());
     } catch (error) {
-      console.log(error);
       return undefined;
     }
   }
   function strip(number: number) {
     return parseFloat(number.toPrecision(12));
   }
-  function equal() {
+  function equal(val = "") {
     let results: number | undefined;
     const maintained = maintainPercent();
     results = doMath(maintained, state.ops);
     if (total.showed.join("") !== "" && results !== undefined) {
-      setState((prev) => ({
-        ...prev,
-        results: strip(results!),
-      }));
+      setResults(results);
+    }
+    if (results === undefined && val === "=") {
+      invaildFormat();
+      return;
+    }
+
+    if (
+      document.getElementById("result")!.classList.contains("opacity-25") &&
+      val === "="
+    )
+      document.getElementById("result")!.classList.remove("opacity-25");
+    else if (
+      !document.getElementById("result")!.classList.contains("opacity-25") &&
+      val !== "="
+    ) {
+      document.getElementById("result")!.classList.add("opacity-25");
     }
     if (
       total.showed.join("") !== results?.toString() &&
-      results !== undefined
+      results !== undefined &&
+      val === "="
     ) {
+      if (
+        document.getElementById("result")!.classList.contains("text-gray-400")
+      )
+        document.getElementById("result")!.classList.remove("text-gray-400");
       dispatch(
         add({
-          statePayload: JSON.parse(
-            JSON.stringify({ ...state, results: Number(strip(results)) })
-          ),
+          statePayload: JSON.parse(JSON.stringify({ ...state })),
           showedPayload: total.showed.join(""),
+          resultsPayload: Number(strip(results)),
         })
       );
     }
   }
-
+  useEffect(() => {
+    if (results !== undefined) {
+      document.getElementById("result")!.innerHTML = strip(results).toString();
+    }
+  }, [results]);
   useEffect(() => {
     let total: string[] = [];
-    if (state.results !== undefined) {
-      document.getElementById("result")!.innerHTML = strip(
-        state.results
-      ).toString();
-    }
     for (let i = 0; i < state.digits.length; i++) {
       total.push(state.digits[i]);
       if (state.ops[i] !== undefined) {
         total.push(state.ops[i]);
       }
     }
+    if (total.join("") !== "") {
+      equal();
+    } else {
+      setResults(0);
+    }
     setTotal((prev) => ({
       ...prev,
       showed: total,
     }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   useEffect(() => {
@@ -496,7 +510,7 @@ export default function Calc() {
       </button>
       <div
         id="calc"
-        className="overflow-hidden duration-200 left-2 mt-2 shadow-2xl fixed w-4/5 max-w-lg z-40"
+        className="overflow-hidden duration-200 left-2 mt-2 shadow-2xl fixed sm:w-96 w-3/4 z-40"
       >
         <Screen click={maintainClick} />
         <Buttons ids={IDs} click={maintainClick} />
@@ -513,12 +527,17 @@ const Screen = (props: screenProps) => {
   return (
     <div className="align-center w-full bg-sky-600 p-10 rounded-tl rounded-tr">
       <Notify />
-      <p id="input" className="p-3 h-14 break-words overflow-y-auto">
+      <p
+        id="input"
+        className="duration-200 p-3 h-14 break-words overflow-y-auto"
+      >
         0
       </p>
-      <h2 id="result" className="text-2xl p-3 overflow-x-auto w-full">
-        {" "}
-        0
+      <h2
+        id="result"
+        className="duration-200 text-2xl p-3 overflow-x-auto w-full"
+      >
+        {}0
       </h2>
       <div className="flex justify-between">
         <button
@@ -557,41 +576,32 @@ interface Props {
 }
 
 type histProps = {
-  post: (val: {
-    digits: string[];
-    ops: string[];
-    results: number | undefined;
-    curr: number;
-    count: number;
-    startLevelIndex: number[];
-    endLevelIndex: number[];
-    percentLevel: number[];
-  }) => void;
+  post: (val: state, val2: number) => void;
 };
 
 const History = (props: histProps) => {
   const dispatch = useDispatch();
   const hist = useSelector(selectHist);
-  const { histList, showed } = hist;
+  const { histList, showed, results } = hist;
 
   const { post } = props;
   return (
     <div
       id="hist"
-      className="duration-200 p-2 bg-white absolute left-0 -bottom-[160px] h-40 w-3/4 shadow-xl"
+      className="duration-200 p-2 bg-white absolute left-0 -bottom-[200px] h-[12.5rem] w-full shadow-xl"
     >
       <div className="text-left h-3/4 overflow-y-auto m-1">
         {histList.map((histo, i) => (
           <div
             key={i}
-            onClick={() => post(histo)}
+            onClick={() => post(histo, results[i])}
             className="duration-200 cursor-pointer p-3 rounded hover:bg-gray-300"
           >
             <div className="w-full leading-10">
               <p>{showed[i]}</p>
             </div>
             <div className="w-full text-sky-600 leading-10">
-              <p>= {histo.results ?? 0}</p>
+              <p>= {results[i] ?? 0}</p>
             </div>
           </div>
         ))}
@@ -609,11 +619,11 @@ const History = (props: histProps) => {
 const Buttons = (props: Props) => {
   const { ids, click } = props;
   const digitClass =
-    "w-1/4 h-10 text-sky-600 rounded-full duration-200 hover:bg-sky-600 hover:text-white active:bg-sky-600 active:text-white";
+    "group w-1/4 h-10 text-sky-600 rounded-full duration-200 active:scale-[200%] ";
   const opClass =
-    "w-1/4 h-10 text-gray-600 rounded-lg duration-200 hover:bg-sky-600 active:bg-sky-600";
+    "group w-1/4 h-10 text-gray-600 rounded-lg duration-200 active:scale-[200%] ";
   const clearClass =
-    "w-1/4 h-10 text-red-600 rounded-lg duration-200 hover:bg-sky-600 active:bg-sky-600";
+    "group w-1/4 h-10 text-red-600 rounded-lg duration-200 active:scale-[200%] ";
 
   return (
     <div
@@ -630,7 +640,7 @@ const Buttons = (props: Props) => {
             click(id);
           }}
         >
-          {id}
+          <span className="duration-200 group-active:scale-150">{id}</span>
         </button>
       ))}
     </div>
