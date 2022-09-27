@@ -296,83 +296,76 @@ export default function Calc() {
 
   function maintainPercent() {
     let { digits, ops, percentLevel, startLevelIndex } = state;
-    let l = -1;
-    const maintained = digits.map((digit, i) => {
-      if (digit.indexOf("%") !== -1) {
-        if (
-          ["+", "-"].indexOf(ops[i - 1]) + 1 &&
-          ["+", "-", undefined].indexOf(ops[1]) + 1
-        ) {
+    let maintained = [...digits];
+    for (let s = 0; s < maintained.length; s++) {
+      let l = -1;
+      for (let i = 0; i < maintained.length; i++) {
+        if (maintained[i].indexOf("%") !== -1) {
+          l++;
           if (
-            digit.indexOf("%") > digit.indexOf(")") &&
-            digit.indexOf(")") >= 0
+            ["+", "-"].indexOf(ops[i - 1]) + 1 &&
+            ["+", "-", undefined].indexOf(ops[i]) + 1
           ) {
-            l++;
-
-            return (
-              "(" +
-              digit.replace(
-                "%",
-                "/100*" +
-                  doMath(
-                    digits.slice(
-                      percentLevel[l],
-                      startLevelIndex[
-                        startLevelIndex.indexOf(percentLevel[l]) + 1
-                      ]
-                    ),
-                    ops.slice(
-                      startLevelIndex[
-                        startLevelIndex.lastIndexOf(percentLevel[l]) -
-                          repNumber(digit, ")")
-                      ],
-                      percentLevel[l] - 1
-                    ),
-                    getCount(
-                      digits.slice(
+            if (
+              maintained[i].indexOf("%") > maintained[i].indexOf(")") &&
+              maintained[i].indexOf(")") >= 0
+            ) {
+              console.log(
+                "(" + maintained[startLevelIndex[percentLevel[l] + 1]]
+              );
+              maintained[startLevelIndex[percentLevel[l] + 1]] =
+                "(" + maintained[startLevelIndex[percentLevel[l] + 1]];
+              maintained[i] =
+                maintained[i].replace(
+                  "%",
+                  "/100*" +
+                    doMath(
+                      maintained.slice(
+                        percentLevel[l],
                         startLevelIndex[
-                          startLevelIndex.lastIndexOf(percentLevel[l]) -
-                            repNumber(digit, ")")
-                        ],
-                        percentLevel[l]
+                          startLevelIndex.indexOf(percentLevel[l]) + 1
+                        ]
+                      ),
+                      ops.slice(
+                        percentLevel[l],
+                        startLevelIndex[
+                          startLevelIndex.indexOf(percentLevel[l])
+                        ]
+                      ),
+                      getCount(
+                        maintained.slice(
+                          percentLevel[l],
+                          startLevelIndex[
+                            startLevelIndex.indexOf(percentLevel[l]) + 1
+                          ]
+                        )
                       )
                     )
-                  ) +
-                  ")"
-              )
-            );
+                ) + ")";
+              console.log(maintained[i]);
+            } else {
+              maintained[i] =
+                "(" +
+                maintained[i].replace(
+                  "%",
+                  "/100*" +
+                    doMath(
+                      maintained.slice(percentLevel[l], i),
+                      ops.slice(percentLevel[l], i - 1),
+                      getCount(maintained.slice(percentLevel[l - 1], i))
+                    )
+                ) +
+                ")";
+            }
+          } else {
+            maintained[i] = "(" + maintained[i].replace("%", "/100") + ")";
           }
-          l++;
-          return (
-            "(" +
-            digit.replace(
-              "%",
-              "/100*" +
-                doMath(
-                  digits.slice(percentLevel[l], i),
-                  ops.slice(percentLevel[l], i - 1),
-                  getCount(digits.slice(percentLevel[l - 1], i))
-                )
-            ) +
-            ")"
-          );
-        } else {
-          l++;
-          return "(" + digit.replace("%", "/100") + ")";
+          break;
         }
-      } else {
-        return digit;
       }
-    });
-    return maintained;
-  }
-
-  function repNumber(str: string, substr: string) {
-    let count = 0;
-    for (let i = 1; i < str.length - 1; i++) {
-      if (str.indexOf(substr.repeat(i)) >= 0) count = i;
     }
-    return count;
+
+    return maintained;
   }
 
   function getCount(arr: string[]) {
@@ -402,7 +395,10 @@ export default function Calc() {
       count--;
     }
     if (total.join("") === "") return 1;
+    console.log(total.join(""), ops);
+
     try {
+      console.log(Number(Function(`return ${total.join("")}`)()));
       return Number(Function(`return ${total.join("")}`)());
     } catch (error) {
       console.log(error);
