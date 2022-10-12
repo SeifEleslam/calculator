@@ -355,7 +355,15 @@ export default function Calc() {
                 ")";
             }
           } else {
-            maintained[i] = "(" + maintained[i].replace("%", "/100") + ")";
+            if (
+              maintained[i].indexOf("%") > maintained[i].indexOf(")") &&
+              maintained[i].indexOf(")") >= 0
+            ) {
+              maintained[i] = maintained[i].replace("%", "/100");
+            } else {
+              maintained[i] = "(" + maintained[i].replace("%", "/100") + ")";
+            }
+            console.log(maintained[i]);
           }
           break;
         }
@@ -406,6 +414,8 @@ export default function Calc() {
     results = doMath(maintained, state.ops);
     if (total.showed.join("") !== "" && results !== undefined) {
       setResults(results);
+    } else {
+      setResults(0);
     }
     if (results === undefined && val === "=") {
       invaildFormat();
@@ -428,10 +438,6 @@ export default function Calc() {
       results !== undefined &&
       val === "="
     ) {
-      if (
-        document.getElementById("result")!.classList.contains("text-gray-400")
-      )
-        document.getElementById("result")!.classList.remove("text-gray-400");
       dispatch(
         add({
           statePayload: JSON.parse(JSON.stringify({ ...state })),
@@ -439,6 +445,15 @@ export default function Calc() {
           resultsPayload: Number(strip(results)),
         })
       );
+      setState({
+        digits: [results.toString()],
+        ops: [""],
+        curr: 0,
+        count: 0,
+        startLevelIndex: [0],
+        endLevelIndex: [],
+        percentLevel: [],
+      });
     }
   }
   useEffect(() => {
